@@ -134,31 +134,31 @@ export class Gemma {
     this.currentStream.push(data)
   }
 
-  streamResponse() {
-    this.currentStream = new Duplex({
-      read() {},
-      write(chunk, encoding, callback) {
-        this.push(chunk)
-        callback()
-      },
-    })
-    this.currentStream.on('finish', () => console.log('Stream finished.'))
-    this.currentStream.on('error', (err) => console.error('Stream error:', err))
-    this.currentStream.on('close', () => console.log('Stream closed.'))
-    this.waitForReady().then(async () => {
-      const stream = this.currentStream
-      stream?.push(null)
-      await finished(stream!)
-      stream?.end()
-    })
+  // streamResponse() {
+  //   this.currentStream = new Duplex({
+  //     read() {},
+  //     write(chunk, encoding, callback) {
+  //       this.push(chunk)
+  //       callback()
+  //     },
+  //   })
+  //   this.currentStream.on('finish', () => console.log('Stream finished.'))
+  //   this.currentStream.on('error', (err) => console.error('Stream error:', err))
+  //   this.currentStream.on('close', () => console.log('Stream closed.'))
+  //   this.waitForReady().then(async () => {
+  //     const stream = this.currentStream
+  //     stream?.push(null)
+  //     await finished(stream!)
+  //     stream?.end()
+  //   })
 
-    return this.currentStream
-  }
+  //   return this.currentStream
+  // }
 
   async collectResponse(): Promise<string[]> {
     return new Promise(async (resolve) => {
       const resp: string[] = []
-      this.gemmaProcess?.stdout.on('data', (data) => {
+      const onCollectResponse = (data: Buffer) => {
         // first there is a loading period
         // [ Reading prompt ] ............
         // once that prompt is passed then we can start collecting the response
@@ -172,24 +172,27 @@ export class Gemma {
         }
 
         this.processing = false
-        resp.push(data)
-      })
+        resp.push(data.toString())
+      }
+      this.gemmaProcess?.stdout.on('data', onCollectResponse)
       await this.waitForReady()
+      this.gemmaProcess?.stdout.off('data', onCollectResponse)
       resolve(resp)
     })
   }
 
-  sendMessage(input: string) {
-    if (!this.readyForInput) {
-      throw new Error('Gemma is not ready for input')
-    }
-    this.readyForInput = false
-    const stream = this.streamResponse()
-    this.gemmaProcess?.stdin.write(input)
-    // Send enter key to gemma process
-    this.gemmaProcess?.stdin.write('\n')
+  sendMessageStream(input: string) {
+    throw new Error('Not implemented')
+    // if (!this.readyForInput) {
+    //   throw new Error('Gemma is not ready for input')
+    // }
+    // this.readyForInput = false
+    // const stream = this.streamResponse()
+    // this.gemmaProcess?.stdin.write(input)
+    // // Send enter key to gemma process
+    // this.gemmaProcess?.stdin.write('\n')
 
-    return stream
+    // return stream
   }
 
   async sendMessageAsync(input: string) {
